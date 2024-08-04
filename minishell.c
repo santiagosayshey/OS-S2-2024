@@ -1,13 +1,3 @@
-/*********************************************************************
-   Program  : miniShell                   Version    : 1.3
- --------------------------------------------------------------------
-   skeleton code for linix/unix/minix command line interpreter
- --------------------------------------------------------------------
-   File			: minishell.c
-   Compiler/System	: gcc/linux
-
-********************************************************************/
-
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdio.h>
@@ -16,78 +6,84 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define NV 20			/* max number of command tokens */
-#define NL 100			/* input buffer size */
-char            line[NL];	/* command input buffer */
+#define NV 20     /* max number of command tokens */
+#define NL 100    /* input buffer size */
 
+char line[NL];    /* command input buffer */
 
-/*
-	shell prompt
- */
-
-prompt(void)
-{
-  fprintf(stdout, "\n msh> ");
-  fflush(stdout);
-
+/* Function to check if command should run in background */
+int is_background(char **v, int count) {
+    if (count > 0 && strcmp(v[count-1], "&") == 0) {
+        v[count-1] = NULL;  // Remove the '&'
+        return 1;
+    }
+    return 0;
 }
 
-
-main(int argk, char *argv[], char *envp[])
-/* argk - number of arguments */
-/* argv - argument vector from command line */
-/* envp - environment pointer */
-
-{
-  int             frkRtnVal;	/* value returned by fork sys call */
-  int             wpid;		/* value returned by wait */
-  char           *v[NV];	/* array of pointers to command line tokens */
-  char           *sep = " \t\n";/* command line token separators    */
-  int             i;		/* parse index */
-
-
-  /* prompt for and process one command line at a time  */
-
-  while (1) {			/* do Forever */
-    prompt();
-    fgets(line, NL, stdin);
-    fflush(stdin);
-
-    if (feof(stdin)) {		/* non-zero on EOF  */
-
-      fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
-	      feof(stdin), ferror(stdin));
-      exit(0);
+/* Signal handler for SIGCHLD */
+void sigchld_handler(int signo) {
+    int status;
+    pid_t pid;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        printf("Background process %d finished\n", pid);
     }
-    if (line[0] == '#' || line[0] == '\n' || line[0] == '\000')
-      continue;			/* to prompt */
+}
 
-    v[0] = strtok(line, sep);
-    for (i = 1; i < NV; i++) {
-      v[i] = strtok(NULL, sep);
-      if (v[i] == NULL)
-	break;
+/* shell prompt */
+void prompt(void) {
+    fprintf(stdout, "\n msh> ");
+    fflush(stdout);
+}
+
+int main(int argk, char *argv[], char *envp[]) {
+    int frkRtnVal;
+    char *v[NV];
+    char *sep = " \t\n";
+    int i;
+    int bg;
+
+    /* Set up SIGCHLD handler */
+    signal(SIGCHLD, sigchld_handler);
+
+    while (1) {
+        prompt();
+        if (fgets(line, NL, stdin) == NULL) {
+            if (feof(stdin)) {
+                fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
+                    feof(stdin), ferror(stdin));
+                exit(0);
+            }
+            continue;
+        }
+
+        if (line[0] == '#' || line[0] == '\n' || line[0] == '\0')
+            continue;
+
+        v[0] = strtok(line, sep);
+        for (i = 1; i < NV; i++) {
+            v[i] = strtok(NULL, sep);
+            if (v[i] == NULL)
+                break;
+        }
+
+        bg = is_background(v, i);
+
+        switch (frkRtnVal = fork()) {
+        case -1:
+            perror("fork");
+            break;
+        case 0:
+            execvp(v[0], v);
+            perror("execvp");
+            exit(1);
+        default:
+            if (!bg) {
+                waitpid(frkRtnVal, NULL, 0);
+                printf("%s done \n", v[0]);
+            } else {
+                printf("Started background process %d\n", frkRtnVal);
+            }
+            break;
+        }
     }
-    /* assert i is number of tokens + 1 */
-
-    /* fork a child process to exec the command in v[0] */
-
-    switch (frkRtnVal = fork()) {
-    case -1:			/* fork returns error to parent process */
-      {
-	break;
-      }
-    case 0:			/* code executed only by child process */
-      {
-	execvp(v[0], v);
-	
-      }
-    default:			/* code executed only by parent process */
-      {
-	wpid = wait(0);
-	printf("%s done \n", v[0]);
-	break;
-      }
-    }				/* switch */
-  }				/* while */
-}				/* main */
+}
