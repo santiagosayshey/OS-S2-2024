@@ -29,6 +29,20 @@ void sigchld_handler(int signo) {
     }
 }
 
+/* Function to handle 'cd' command */
+void change_directory(char **args) {
+    if (args[1] == NULL) {
+        // If no argument is provided, change to HOME directory
+        if (chdir(getenv("HOME")) != 0) {
+            perror("cd");
+        }
+    } else {
+        if (chdir(args[1]) != 0) {
+            perror("cd");
+        }
+    }
+}
+
 /* shell prompt */
 void prompt(void) {
     fprintf(stdout, "\n msh> ");
@@ -64,6 +78,12 @@ int main(int argk, char *argv[], char *envp[]) {
             v[i] = strtok(NULL, sep);
             if (v[i] == NULL)
                 break;
+        }
+
+        // Handle 'cd' command
+        if (strcmp(v[0], "cd") == 0) {
+            change_directory(v);
+            continue;
         }
 
         bg = is_background(v, i);
