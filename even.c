@@ -15,15 +15,13 @@ void print_even(int num) {
     }
 }
 
-void handle_sigint(int sig) {
+void handle_sigint() {
     printf("Yeah!\n");
-    fflush(stdout);
     signal(SIGINT, handle_sigint); 
 }
 
-void handle_sighup(int sig) {
+void handle_sighup() {
     printf("Ouch!\n");
-    fflush(stdout);
     signal(SIGHUP, handle_sighup);
 }
 
