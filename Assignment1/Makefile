@@ -2,9 +2,9 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c99
 LDFLAGS =
 
-SRC = $(wildcard *.c)
+SRC = even.c
 OBJ = $(SRC:.c=.o)
-EXEC = program
+EXEC = out
 
 all: $(EXEC)
 
@@ -12,7 +12,7 @@ $(EXEC): $(OBJ)
 	$(CC) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $
+	$(CC) $(CFLAGS) -c $<
 
 run: $(EXEC)
 	./$(EXEC)
