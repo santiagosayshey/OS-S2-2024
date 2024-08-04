@@ -4,9 +4,13 @@
 #include <unistd.h>
 
 void print_even(int num) {
-    for (int i = 0; i <= num; i += 2) {
-        printf("%d\n", i);
-        fflush(stdout);
+    int current = 0;
+    int toPrint = 0;
+
+    while (current < num) {
+        printf("%d\n", toPrint); 
+        toPrint += 2;
+        current++;
         sleep(5);
     }
 }
