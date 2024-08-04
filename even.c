@@ -4,31 +4,37 @@
 #include <unistd.h>
 
 void print_even(int num) {
-    for (int i=0; i<num+1; i++) {
-        if (!(i % 2)) {
-            printf("%d\n", i);
-            sleep(5);
-        }
+    for (int i = 0; i <= num; i += 2) {
+        printf("%d\n", i);
+        fflush(stdout);
+        sleep(5);
     }
 }
 
-void handle_sigint() {
-    printf("Yeah!");
+void handle_sigint(int sig) {
+    printf("Yeah!\n");
+    fflush(stdout);
+    signal(SIGINT, handle_sigint); 
 }
 
-void handle_sighup() {
-    printf("Ouch!");
+void handle_sighup(int sig) {
+    printf("Ouch!\n");
+    fflush(stdout);
+    signal(SIGHUP, handle_sighup);
 }
 
 int main(int argc, char **argv) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <number>\n", argv[0]);
+        return 1;
+    }
+
+    int num = atoi(argv[1]);
+
     signal(SIGINT, handle_sigint);
     signal(SIGHUP, handle_sighup);
 
-    if (argc > 1) {
-        int num = atoi(argv[1]);
-        print_even(num);
-    } else {
-        printf("No argument provided\n");
-    }
+    print_even(num);
+
     return 0;
 }
