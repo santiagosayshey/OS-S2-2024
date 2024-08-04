@@ -5,35 +5,40 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <errno.h>
 
 #define NV 20     /* max number of command tokens */
 #define NL 100    /* input buffer size */
 
 char line[NL];    /* command input buffer */
 
-/* Function to check if command should run in background */
 int is_background(char **v, int count) {
     if (count > 0 && strcmp(v[count-1], "&") == 0) {
-        v[count-1] = NULL;  // Remove the '&'
+        v[count-1] = NULL;
         return 1;
     }
     return 0;
 }
 
-/* Signal handler for SIGCHLD */
 void sigchld_handler(int signo) {
     int status;
     pid_t pid;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         printf("Background process %d finished\n", pid);
     }
+    if (pid < 0 && errno != ECHILD) {
+        perror("waitpid");
+    }
 }
 
-/* Function to handle 'cd' command */
 void change_directory(char **args) {
     if (args[1] == NULL) {
-        // If no argument is provided, change to HOME directory
-        if (chdir(getenv("HOME")) != 0) {
+        char *home = getenv("HOME");
+        if (home == NULL) {
+            fprintf(stderr, "HOME environment variable not set\n");
+            return;
+        }
+        if (chdir(home) != 0) {
             perror("cd");
         }
     } else {
@@ -43,10 +48,13 @@ void change_directory(char **args) {
     }
 }
 
-/* shell prompt */
 void prompt(void) {
-    fprintf(stdout, "\n msh> ");
-    fflush(stdout);
+    if (fprintf(stdout, "\n msh> ") < 0) {
+        perror("fprintf");
+    }
+    if (fflush(stdout) != 0) {
+        perror("fflush");
+    }
 }
 
 int main(int argk, char *argv[], char *envp[]) {
@@ -56,16 +64,23 @@ int main(int argk, char *argv[], char *envp[]) {
     int i;
     int bg;
 
-    /* Set up SIGCHLD handler */
-    signal(SIGCHLD, sigchld_handler);
+    if (signal(SIGCHLD, sigchld_handler) == SIG_ERR) {
+        perror("signal");
+        exit(1);
+    }
 
     while (1) {
         prompt();
         if (fgets(line, NL, stdin) == NULL) {
             if (feof(stdin)) {
-                fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
-                    feof(stdin), ferror(stdin));
+                if (fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
+                    feof(stdin), ferror(stdin)) < 0) {
+                    perror("fprintf");
+                }
                 exit(0);
+            }
+            if (ferror(stdin)) {
+                perror("fgets");
             }
             continue;
         }
@@ -80,7 +95,6 @@ int main(int argk, char *argv[], char *envp[]) {
                 break;
         }
 
-        // Handle 'cd' command
         if (strcmp(v[0], "cd") == 0) {
             change_directory(v);
             continue;
@@ -98,10 +112,16 @@ int main(int argk, char *argv[], char *envp[]) {
             exit(1);
         default:
             if (!bg) {
-                waitpid(frkRtnVal, NULL, 0);
-                printf("%s done \n", v[0]);
+                if (waitpid(frkRtnVal, NULL, 0) == -1) {
+                    perror("waitpid");
+                }
+                if (printf("%s done \n", v[0]) < 0) {
+                    perror("printf");
+                }
             } else {
-                printf("Started background process %d\n", frkRtnVal);
+                if (printf("Started background process %d\n", frkRtnVal) < 0) {
+                    perror("printf");
+                }
             }
             break;
         }
