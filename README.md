@@ -10,10 +10,10 @@ This repository contains the code for the Operating Systems course at the Univer
 1. For each Makefile in their respective assignment directories, you can run the following commands:
 
 2. Compile:
-   make
+   ```make```
 
 3. Compile and run:
-   make run
+   ```make run```
 
 4. Clean up:
-   make clean
+   ```make clean```
