@@ -24,11 +24,7 @@ void sigchld_handler(int signo) {
     int status;
     pid_t pid;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        if (WIFEXITED(status)) {
-            printf("Background process %d finished with exit status %d\n", pid, WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-            printf("Background process %d terminated by signal %d\n", pid, WTERMSIG(status));
-        }
+        printf("%d done \n", pid);
     }
     if (pid < 0 && errno != ECHILD) {
         perror("waitpid");
@@ -116,20 +112,12 @@ int main(int argk, char *argv[], char *envp[]) {
             _exit(EXIT_FAILURE);  // Terminate child process if exec fails
         default:
             if (!bg) {
-                int status;
-                if (waitpid(frkRtnVal, &status, 0) == -1) {
+                if (waitpid(frkRtnVal, NULL, 0) == -1) {
                     perror("waitpid");
-                } else {
-                    if (WIFEXITED(status)) {
-                        printf("%s done with exit status %d\n", v[0], WEXITSTATUS(status));
-                    } else if (WIFSIGNALED(status)) {
-                        printf("%s terminated by signal %d\n", v[0], WTERMSIG(status));
-                    }
                 }
+                printf("%s done \n", v[0]);
             } else {
-                if (printf("Started background process %d\n", frkRtnVal) < 0) {
-                    perror("printf");
-                }
+                printf("[%d] %s\n", frkRtnVal, v[0]);
             }
             break;
         }
