@@ -21,11 +21,11 @@
 char line[NL];           /* command input buffer */
 
 void prompt(void) {
-    fprintf(stdout, "\n msh> ");
+    fprintf(stdout, "msh> ");
     fflush(stdout);
 }
 
-void handle_background_jobs() {
+void handle_background_jobs(int sig) {
     int status;
     pid_t pid;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
@@ -102,9 +102,9 @@ int main(int argk, char *argv[], char *envp[])
                 if (wpid == -1) {
                     perror("waitpid");
                 }
-                printf("%s done \n", v[0]);
+                printf("%s done\n", v[0]);
             } else {
-                printf("[Running background job]\n");
+                printf("[Process %d started]\n", frkRtnVal);
             }
             break;
         }               /* switch */
