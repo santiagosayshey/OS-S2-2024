@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <errno.h>
 
 #define NV 20            /* max number of command tokens */
 #define NL 100           /* input buffer size */
@@ -29,7 +30,8 @@ void handle_background_jobs(int sig) {
     int status;
     pid_t pid;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        printf("[Process %d done]\n", pid);
+        fprintf(stdout, "\n[Process %d done]\n", pid);
+        prompt();
     }
 }
 
