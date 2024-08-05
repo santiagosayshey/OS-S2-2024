@@ -1,13 +1,3 @@
-/*********************************************************************
-   Program  : miniShell                   Version    : 1.3
- --------------------------------------------------------------------
-   skeleton code for linix/unix/minix command line interpreter
- --------------------------------------------------------------------
-   File			: minishell.c
-   Compiler/System	: gcc/linux
-
-********************************************************************/
-
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdio.h>
@@ -20,18 +10,16 @@
 #define NL 100			/* input buffer size */
 char            line[NL];	/* command input buffer */
 
-
 /*
 	shell prompt
  */
 
-prompt(void)
+void prompt(void)
 {
   fprintf(stdout, "\n msh> ");
   fflush(stdout);
 }
 
-// New function to handle background processes
 void handle_sigchld(int sig) {
   int status;
   pid_t pid;
@@ -40,7 +28,7 @@ void handle_sigchld(int sig) {
   }
 }
 
-main(int argk, char *argv[], char *envp[])
+int main(int argk, char *argv[], char *envp[])
 /* argk - number of arguments */
 /* argv - argument vector from command line */
 /* envp - environment pointer */
@@ -111,4 +99,6 @@ main(int argk, char *argv[], char *envp[])
       }
     }				/* switch */
   }				/* while */
+
+  return 0;  // Added return statement
 }				/* main */
