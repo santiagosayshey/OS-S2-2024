@@ -1,3 +1,13 @@
+/*********************************************************************
+   Program  : miniShell                   Version    : 1.3
+ --------------------------------------------------------------------
+   skeleton code for linix/unix/minix command line interpreter
+ --------------------------------------------------------------------
+   File			: minishell.c
+   Compiler/System	: gcc/linux
+
+********************************************************************/
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdio.h>
@@ -5,121 +15,100 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <errno.h>
 
-#define NV 20     /* max number of command tokens */
-#define NL 100    /* input buffer size */
+#define NV 20			/* max number of command tokens */
+#define NL 100			/* input buffer size */
+char            line[NL];	/* command input buffer */
 
-char line[NL];    /* command input buffer */
 
-int is_background(char **v, int count) {
-    if (count > 0 && strcmp(v[count-1], "&") == 0) {
-        v[count-1] = NULL;
-        return 1;
-    }
-    return 0;
+/*
+	shell prompt
+ */
+
+prompt(void)
+{
+  fprintf(stdout, "\n msh> ");
+  fflush(stdout);
 }
 
-void sigchld_handler(int signo) {
-    int status;
-    pid_t pid;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        printf("%d done \n", pid);
-    }
-    if (pid < 0 && errno != ECHILD) {
-        perror("waitpid");
-    }
+// New function to handle background processes
+void handle_sigchld(int sig) {
+  int status;
+  pid_t pid;
+  while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    printf("\nBackground process %d done\n", pid);
+  }
 }
 
-void change_directory(char **args) {
-    if (args[1] == NULL) {
-        char *home = getenv("HOME");
-        if (home == NULL) {
-            fprintf(stderr, "HOME environment variable not set\n");
-            return;
-        }
-        if (chdir(home) != 0) {
-            perror("cd");
-        }
-    } else {
-        if (chdir(args[1]) != 0) {
-            perror("cd");
-        }
-    }
-}
+main(int argk, char *argv[], char *envp[])
+/* argk - number of arguments */
+/* argv - argument vector from command line */
+/* envp - environment pointer */
 
-void prompt(void) {
-    if (fprintf(stdout, "\n msh> ") < 0) {
-        perror("fprintf");
-    }
-    if (fflush(stdout) != 0) {
-        perror("fflush");
-    }
-}
+{
+  int             frkRtnVal;	/* value returned by fork sys call */
+  int             wpid;		/* value returned by wait */
+  char           *v[NV];	/* array of pointers to command line tokens */
+  char           *sep = " \t\n";/* command line token separators    */
+  int             i;		/* parse index */
+  int             background;   /* flag for background processes */
 
-int main(int argk, char *argv[], char *envp[]) {
-    int frkRtnVal;
-    char *v[NV];
-    char *sep = " \t\n";
-    int i;
-    int bg;
+  signal(SIGCHLD, handle_sigchld);
 
-    if (signal(SIGCHLD, sigchld_handler) == SIG_ERR) {
-        perror("signal");
+  /* prompt for and process one command line at a time  */
+
+  while (1) {			/* do Forever */
+    prompt();
+    fgets(line, NL, stdin);
+    fflush(stdin);
+
+    if (feof(stdin)) {		/* non-zero on EOF  */
+
+      fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
+	      feof(stdin), ferror(stdin));
+      exit(0);
+    }
+    if (line[0] == '#' || line[0] == '\n' || line[0] == '\000')
+      continue;			/* to prompt */
+
+    v[0] = strtok(line, sep);
+    for (i = 1; i < NV; i++) {
+      v[i] = strtok(NULL, sep);
+      if (v[i] == NULL)
+	break;
+    }
+    /* assert i is number of tokens + 1 */
+
+    background = 0;
+    if (i > 1 && strcmp(v[i-1], "&") == 0) {
+      background = 1;
+      v[i-1] = NULL;
+    }
+
+    /* fork a child process to exec the command in v[0] */
+
+    switch (frkRtnVal = fork()) {
+    case -1:			/* fork returns error to parent process */
+      {
+        perror("fork");
+	break;
+      }
+    case 0:			/* code executed only by child process */
+      {
+	execvp(v[0], v);
+	perror("execvp");
         exit(1);
-    }
-
-    while (1) {
-        prompt();
-        if (fgets(line, NL, stdin) == NULL) {
-            if (feof(stdin)) {
-                if (fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
-                    feof(stdin), ferror(stdin)) < 0) {
-                    perror("fprintf");
-                }
-                exit(0);
-            }
-            if (ferror(stdin)) {
-                perror("fgets");
-            }
-            continue;
+      }
+    default:			/* code executed only by parent process */
+      {
+        if (!background) {
+	  wpid = wait(0);
+	  printf("%s done \n", v[0]);
+	} else {
+          printf("[%d] %s\n", frkRtnVal, v[0]);
         }
-
-        if (line[0] == '#' || line[0] == '\n' || line[0] == '\0')
-            continue;
-
-        v[0] = strtok(line, sep);
-        for (i = 1; i < NV; i++) {
-            v[i] = strtok(NULL, sep);
-            if (v[i] == NULL)
-                break;
-        }
-
-        if (strcmp(v[0], "cd") == 0) {
-            change_directory(v);
-            continue;
-        }
-
-        bg = is_background(v, i);
-
-        switch (frkRtnVal = fork()) {
-        case -1:
-            perror("fork");
-            break;
-        case 0:
-            execvp(v[0], v);
-            perror("execvp");
-            _exit(EXIT_FAILURE);  // Terminate child process if exec fails
-        default:
-            if (!bg) {
-                if (waitpid(frkRtnVal, NULL, 0) == -1) {
-                    perror("waitpid");
-                }
-                printf("%s done \n", v[0]);
-            } else {
-                printf("[%d] %s\n", frkRtnVal, v[0]);
-            }
-            break;
-        }
-    }
-}
+	break;
+      }
+    }				/* switch */
+  }				/* while */
+}				/* main */
