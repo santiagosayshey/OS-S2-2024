@@ -37,14 +37,21 @@ void handle_background(pid_t pid, char *cmd)
   printf("[%d] %s &\n", pid, cmd);
 }
 
-void cd_command(char *path)
-{
-  if (chdir(path) == -1) {
-    perror("chdir");
-  } else {
-    printf("Changed directory to: %s\n", path);
-  }
+void cd_command(char **args) {
+    if (args[1] == NULL) {
+        // If no argument is provided, change to HOME directory
+        if (chdir(getenv("HOME")) == -1) {
+            perror("cd");
+        }
+    } else {
+        // Change to the specified directory
+        if (chdir(args[1]) == -1) {
+            perror("cd");
+        }
+    }
+    printf("cd done \n");
 }
+
 
 int main(int argk, char *argv[], char *envp[])
 /* argk - number of arguments */
@@ -94,16 +101,8 @@ int main(int argk, char *argv[], char *envp[])
     }
 
     if (strcmp(v[0], "cd") == 0) {
-        if (v[1] == NULL) {
-            if (chdir(getenv("HOME")) != 0) {
-            perror("cd");
-            }
-        } else {
-            if (chdir(v[1]) != 0) {
-            perror("cd");
-            }
-        }
-        continue;  // Skip the fork and go to the next iteration
+        cd_command(v);
+        continue;  // Skip to the next iteration of the loop
     }
 
     /* fork a child process to exec the command in v[0] */
