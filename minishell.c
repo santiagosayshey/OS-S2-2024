@@ -1,3 +1,13 @@
+/*********************************************************************
+   Program  : miniShell                   Version    : 1.3
+ --------------------------------------------------------------------
+   skeleton code for linix/unix/minix command line interpreter
+ --------------------------------------------------------------------
+   File			: minishell.c
+   Compiler/System	: gcc/linux
+
+********************************************************************/
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdio.h>
@@ -5,30 +15,38 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <errno.h>
 
 #define NV 20			/* max number of command tokens */
 #define NL 100			/* input buffer size */
 char            line[NL];	/* command input buffer */
 
+
 /*
 	shell prompt
  */
 
-void prompt(void)
+prompt(void)
 {
   fprintf(stdout, "\n msh> ");
   fflush(stdout);
 }
 
-void handle_sigchld(int sig) {
-  int status;
-  pid_t pid;
-  while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-    printf("\nBackground process %d done\n", pid);
+void handle_background(pid_t pid, char *cmd)
+{
+  printf("[%d] %s &\n", pid, cmd);
+}
+
+void cd_command(char *path)
+{
+  if (chdir(path) == -1) {
+    perror("chdir");
+  } else {
+    printf("Changed directory to: %s\n", path);
   }
 }
 
-int main(int argk, char *argv[], char *envp[])
+main(int argk, char *argv[], char *envp[])
 /* argk - number of arguments */
 /* argv - argument vector from command line */
 /* envp - environment pointer */
@@ -39,15 +57,17 @@ int main(int argk, char *argv[], char *envp[])
   char           *v[NV];	/* array of pointers to command line tokens */
   char           *sep = " \t\n";/* command line token separators    */
   int             i;		/* parse index */
-  int             background;   /* flag for background processes */
+  int             background = 0;
 
-  signal(SIGCHLD, handle_sigchld);
 
   /* prompt for and process one command line at a time  */
 
   while (1) {			/* do Forever */
     prompt();
-    fgets(line, NL, stdin);
+    if (fgets(line, NL, stdin) == NULL) {
+      perror("fgets");
+      exit(1);
+    }
     fflush(stdin);
 
     if (feof(stdin)) {		/* non-zero on EOF  */
@@ -73,6 +93,19 @@ int main(int argk, char *argv[], char *envp[])
       v[i-1] = NULL;
     }
 
+    if (strcmp(v[0], "cd") == 0) {
+        if (v[1] == NULL) {
+            if (chdir(getenv("HOME")) != 0) {
+            perror("cd");
+            }
+        } else {
+            if (chdir(v[1]) != 0) {
+            perror("cd");
+            }
+        }
+        continue;  // Skip the fork and go to the next iteration
+    }
+
     /* fork a child process to exec the command in v[0] */
 
     switch (frkRtnVal = fork()) {
@@ -89,16 +122,22 @@ int main(int argk, char *argv[], char *envp[])
       }
     default:			/* code executed only by parent process */
       {
-        if (!background) {
-	  wpid = wait(0);
-	  printf("%s done \n", v[0]);
-	} else {
-          printf("[%d] %s\n", frkRtnVal, v[0]);
+	if (!background) {
+          wpid = wait(0);
+          if (wpid == -1) {
+            perror("wait");
+          }
+          printf("%s done \n", v[0]);
+        } else {
+          handle_background(frkRtnVal, v[0]);
         }
 	break;
       }
     }				/* switch */
-  }				/* while */
 
-  return 0;  // Added return statement
+    // Check for finished background processes
+    while ((wpid = waitpid(-1, NULL, WNOHANG)) > 0) {
+      printf("[%d] Done\n", wpid);
+    }
+  }				/* while */
 }				/* main */
