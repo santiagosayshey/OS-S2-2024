@@ -27,11 +27,21 @@ void check_background_processes() {
             int status;
             pid_t result = waitpid(bg_processes[i].pid, &status, WNOHANG);
             if (result == bg_processes[i].pid) {
-                printf("[%d]+ Done                    %s\n", i+1, bg_processes[i].command);
+                printf("[%d]+ Done %s\n", i+1, bg_processes[i].command);
                 bg_processes[i].pid = 0;
             } else if (result == -1) {
                 perror("waitpid");
             }
+        }
+    }
+}
+
+void print_finished_processes() {
+    for (int i = 0; i < bg_count; i++) {
+        if (bg_processes[i].finished) {
+            printf("[%d]+  Done                    %s\n", i+1, bg_processes[i].command);
+            bg_processes[i].pid = 0;
+            bg_processes[i].finished = 0;
         }
     }
 }
