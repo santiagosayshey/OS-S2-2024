@@ -88,10 +88,13 @@ int main(int argk, char *argv[], char *envp[])
         exit(1);
       }
     default:			/* code executed only by parent process */
-      {
-	wpid = wait(NULL);
-	break;
-      }
+    {
+        wpid = wait(NULL);
+        if (wpid == -1) {
+        perror("wait");
+        }
+        break;
+    }
     }				/* switch */
   }				/* while */
 }				/* main */
