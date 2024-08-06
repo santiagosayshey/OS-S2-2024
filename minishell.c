@@ -67,11 +67,6 @@ int main() {
             }
         }
 
-        check_and_print_finished_processes();
-
-        if (line[0] == '#' || line[0] == '\n' || line[0] == '\0')
-            continue;
-
         v[0] = strtok(line, sep);
         for (i = 1; i < NV; i++) {
             v[i] = strtok(NULL, sep);
@@ -79,7 +74,10 @@ int main() {
                 break;
         }
 
-        if (v[0] == NULL) continue;
+        if (v[0] == NULL) {
+            check_and_print_finished_processes();
+            continue;
+        }
 
         if (strcmp(v[0], "cd") == 0) {
             if (v[1] == NULL) {
@@ -91,6 +89,7 @@ int main() {
                     perror("chdir");
                 }
             }
+            check_and_print_finished_processes();
             continue;
         }
 
@@ -127,6 +126,7 @@ int main() {
                     if (wpid == -1) {
                         perror("waitpid");
                     }
+                    check_and_print_finished_processes();
                 }
                 break;
         }
