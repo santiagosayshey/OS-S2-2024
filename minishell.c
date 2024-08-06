@@ -27,7 +27,7 @@ void check_and_print_finished_processes() {
             int status;
             pid_t result = waitpid(bg_processes[i].pid, &status, WNOHANG);
             if (result == bg_processes[i].pid) {
-                printf("[%d]+  Done %s\n", i+1, bg_processes[i].command);
+                printf("[%d]+ Done                    %s\n", i+1, bg_processes[i].command);
                 bg_processes[i].pid = 0;
             } else if (result == -1) {
                 perror("waitpid");
