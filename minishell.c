@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define NV 20           /* max number of command tokens */
-#define NL 100          /* input buffer size */
+#define NV 20
+#define NL 100
 #define MAX_BG_PROCESSES 10
 
-char line[NL];  /* command input buffer */
+char line[NL];
 
 struct bg_process {
     pid_t pid;
@@ -21,51 +21,53 @@ struct bg_process {
 struct bg_process bg_processes[MAX_BG_PROCESSES];
 int bg_count = 0;
 
-void check_background_processes() {
+void check_and_print_finished_processes() {
+    int last_finished = -1;
+    int second_last_finished = -1;
+
     for (int i = 0; i < bg_count; i++) {
         if (bg_processes[i].pid != 0) {
             int status;
             pid_t result = waitpid(bg_processes[i].pid, &status, WNOHANG);
             if (result == bg_processes[i].pid) {
-                printf("[%d]+ Done %s\n", i+1, bg_processes[i].command);
-                bg_processes[i].pid = 0;
+                bg_processes[i].finished = 1;
+                second_last_finished = last_finished;
+                last_finished = i;
             } else if (result == -1) {
                 perror("waitpid");
             }
         }
     }
-}
 
-void print_finished_processes() {
     for (int i = 0; i < bg_count; i++) {
-        if (bg_processes[i].finished) {
-            printf("[%d]+  Done                    %s\n", i+1, bg_processes[i].command);
+        if (bg_processes[i].finished && bg_processes[i].pid != 0) {
+            char status_char = ' ';
+            if (i == last_finished) {
+                status_char = '+';
+            } else if (i == second_last_finished) {
+                status_char = '-';
+            }
+            printf("[%d]%c Done %s\n", i+1, status_char, bg_processes[i].command);
             bg_processes[i].pid = 0;
-            bg_processes[i].finished = 0;
         }
     }
 }
 
 int main() {
-    int frkRtnVal;  /* value returned by fork sys call */
-    int wpid;       /* value returned by wait */
-    char *v[NV];    /* array of pointers to command line tokens */
-    char *sep = " \t\n"; /* command line token separators */
-    int i;          /* parse index */
+    int frkRtnVal;
+    int wpid;
+    char *v[NV];
+    char *sep = " \t\n";
+    int i;
 
-    while (1) {     /* do Forever */
-        check_background_processes();
-        
-        // fprintf(stdout, "\n msh> ");  // Removed prompt
-        // fflush(stdout);
-
+    while (1) {
         if (fgets(line, NL, stdin) == NULL) {
             if (feof(stdin)) {
-                // fprintf(stderr, "EOF pid %d feof %d ferror %d\n", getpid(),
-                //         feof(stdin), ferror(stdin));
                 exit(0);
             }
         }
+
+        check_and_print_finished_processes();
 
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\0')
             continue;
@@ -111,14 +113,14 @@ int main() {
                     bg_count++;
                     printf("[%d] %d\n", bg_count, frkRtnVal);
                     bg_processes[bg_count-1].pid = frkRtnVal;
-                    
+                   
                     // Store the full command including arguments
                     strcpy(bg_processes[bg_count-1].command, "");
                     for (int j = 0; v[j] != NULL; j++) {
                         strcat(bg_processes[bg_count-1].command, v[j]);
                         if (v[j+1] != NULL) strcat(bg_processes[bg_count-1].command, " ");
                     }
-                    
+                   
                     bg_processes[bg_count-1].finished = 0;
                 } else {
                     wpid = waitpid(frkRtnVal, NULL, 0);
@@ -127,7 +129,7 @@ int main() {
                     }
                 }
                 break;
-            }
+        }
     }
     return 0;
 }
