@@ -22,33 +22,16 @@ struct bg_process bg_processes[MAX_BG_PROCESSES];
 int bg_count = 0;
 
 void check_and_print_finished_processes() {
-    int last_finished = -1;
-    int second_last_finished = -1;
-
     for (int i = 0; i < bg_count; i++) {
         if (bg_processes[i].pid != 0) {
             int status;
             pid_t result = waitpid(bg_processes[i].pid, &status, WNOHANG);
             if (result == bg_processes[i].pid) {
-                bg_processes[i].finished = 1;
-                second_last_finished = last_finished;
-                last_finished = i;
+                printf("[%d]+ Done %s\n", i+1, bg_processes[i].command);
+                bg_processes[i].pid = 0;
             } else if (result == -1) {
                 perror("waitpid");
             }
-        }
-    }
-
-    for (int i = 0; i < bg_count; i++) {
-        if (bg_processes[i].finished && bg_processes[i].pid != 0) {
-            char status_char = ' ';
-            if (i == last_finished) {
-                status_char = '+';
-            } else if (i == second_last_finished) {
-                status_char = '-';
-            }
-            printf("[%d]%c Done %s\n", i+1, status_char, bg_processes[i].command);
-            bg_processes[i].pid = 0;
         }
     }
 }
