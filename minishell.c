@@ -27,7 +27,8 @@ void check_and_print_finished_processes() {
             int status;
             pid_t result = waitpid(bg_processes[i].pid, &status, WNOHANG);
             if (result == bg_processes[i].pid) {
-                printf("[%d]+ Done                    %s\n", i+1, bg_processes[i].command);
+                fprintf(stdout, "[%d]+ Done                    %s\n", i+1, bg_processes[i].command);
+                fflush(stdout);
                 bg_processes[i].pid = 0;
             } else if (result == -1) {
                 perror("waitpid");
@@ -93,7 +94,8 @@ int main() {
             default:
                 if (is_background) {
                     bg_count++;
-                    printf("[%d] %d\n", bg_count, frkRtnVal);
+                    fprintf(stdout, "[%d] %d\n", bg_count, frkRtnVal);
+                    fflush(stdout);
                     bg_processes[bg_count-1].pid = frkRtnVal;
                    
                     // Store the full command including arguments
